@@ -1,0 +1,5 @@
+d-create-nginx() {
+  if [[ -z $2 ]]; then echo "usage: d-create-nginx <proj-short-name> <domain-name>"; return 1; fi
+    # launch nginx
+  docker run --restart=always --name $1-nginx -e VIRTUAL_HOST=$2 -v /home/core/conf/$2/nginx-conf.d/:/etc/nginx/conf.d/:ro -v $1-data:/var/www/html --link $1-fpm:phpfpm -d nginx
+}

@@ -1,0 +1,6 @@
+d-create-mysql() {
+  local mysqlpassword=`tr -dc A-Za-z0-9 < /dev/urandom | head -c 16 | xargs;`
+  if [[ -z $1 ]]; then echo "usage: d-create-mysql <proj-short-name>"; return 1; fi
+    # create mysql container linked to $1-mysql volume and random
+  docker run --name $1-mysql --restart=always -v $1-mysql:/var/lib/mysql -e MYSQL_ROOT_PASSWORD=$mysqlpassword -d mysql 
+}

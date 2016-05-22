@@ -1,0 +1,3 @@
+d-create-sftp() {
+  docker run --name=$1-sftp -v /home/core/ssh-authorized-keys/:/home/$1/.ssh/keys/ -v og-data:/home/$1/www-data -p 22 -d atmoz/sftp $1::33:33
+}

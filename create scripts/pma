@@ -1,0 +1,3 @@
+d-create-pma() {
+  docker run --name $!-pma --link $1-mysql:db -p 80 -d phpmyadmin/phpmyadmin
+}

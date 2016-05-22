@@ -1,0 +1,5 @@
+d-create-fpm() {
+  if [[ -z $1 ]]; then echo "usage: d-create-fpm <proj-short-name>"; return 1; fi
+    # launching fresh container
+  docker run --restart=always --name $1-fpm -v /home/core/conf/2x2.ge/fpm-conf.d:/usr/local/etc/php/conf.d -v $1-data:/var/www/html --link $1-mysql:mysql -d 2x2/php5-fpm
+}

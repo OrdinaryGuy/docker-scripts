@@ -1,0 +1,7 @@
+d-set-folder-permissions() {
+  if [[ -z $2 ]]; then echo "usage: d-set-folder-permissions <proj-short-name> <mode umask> [web folder relative path]"; return 1; fi     
+    # set proper permissions for laravel
+  docker exec $1-fpm chmod $2 -R /var/www/html/$3
+  # set www-data as owner for all files
+  docker exec $1-fpm chown www-data:www-data -R /var/www/html/
+}
