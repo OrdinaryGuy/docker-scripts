@@ -1,8 +1,5 @@
 d-run-mysql-query() {
   if [[ -z $2 ]]; then echo "usage: d-run-mysql-query <proj-short-name> <mysql query>"; return 1; fi     
-
-  docker run --link $1-mysql:mysql --rm mysql sh -c '
-    exec mysql -h"$MYSQL_PORT_3306_TCP_ADDR" -P"$MYSQL_PORT_3306_TCP_PORT" -uroot -p"$MYSQL_ENV_MYSQL_ROOT_PASSWORD" 
-    -e "'$2';"
-  '
+echo "broken"  
+# docker run --link $1-mysql:mysql --rm mysql sh -c 'exec mysql -h"$MYSQL_PORT_3306_TCP_ADDR" -P"$MYSQL_PORT_3306_TCP_PORT" -uroot -p"$MYSQL_ENV_MYSQL_ROOT_PASSWORD" -e "'$2'"'
 }
