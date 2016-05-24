@@ -104,3 +104,12 @@ d-create-sftp() {
   docker run --name=$1-sftp -v /home/core/ssh-authorized-keys/:/home/$1/.ssh/keys/ -v $1-data:/home/$1/www-data -p 22 -d atmoz/sftp $1::33:33
 }
 
+d-launch() {
+  if [[ -z $3 ]]; then echo "usage: d-create-nginx <proj-short-name> <domain-name> <nginx-conf-path>"; return 1; fi
+  d-create-mysql $1
+  d-create-mysql-db
+  d-create-mysql-user $1
+  d-create-fpm $1
+  d-set-web-folder-permissions $1
+  d-create-nginx $1 $2 $3
+}
