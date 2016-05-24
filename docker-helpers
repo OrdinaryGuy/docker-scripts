@@ -1,0 +1,106 @@
+d-set-folder-permissions() {
+  if [[ -z $2 ]]; then echo "usage: d-set-folder-permissions <proj-short-name> <mode umask> [web folder relative path]"; return 1; fi     
+    # set proper permissions for laravel
+  docker exec $1-fpm chmod $2 -R /var/www/html/$3
+  # set www-data as owner for all files
+  docker exec $1-fpm chown www-data:www-data -R /var/www/html/
+}
+
+d-create-fpm() {
+  if [[ -z $1 ]]; then echo "usage: d-create-fpm <proj-short-name>"; return 1; fi
+    # launching fresh container
+  docker run --restart=always --name $1-fpm -v /home/core/conf/2x2.ge/fpm-conf.d:/usr/local/etc/php/conf.d -v $1-data:/var/www/html --link $1-mysql:mysql -d 2x2/php5-fpm
+}
+
+d-configure-php-fpm() {
+  proj=$1
+  aptinstall=$2
+  phpGDconfig=$3
+  phpEXTinstall=$4
+  docker exec $proj-fpm apt-get update
+  docker exec $proj-fpm apt-get -yq install $aptinstall
+  docker exec $proj-fpm docker-php-ext-configure gd $phpGDconfig
+  docker exec $proj-fpm docker-php-ext-install -j3 $phpEXTinstall
+    # it is necessary to restart php-fpm container to apply changes
+  echo "Restarting php-fpm container to apply settings"
+  docker restart $proj-fpm
+}
+
+genpasswd() {
+	local l=$1
+       	[ "$l" == "" ] && l=16
+      	tr -dc A-Za-z0-9_ < /dev/urandom | head -c ${l} | xargs
+}
+
+d-create-mysql() {
+  local mysqlpassword=`tr -dc A-Za-z0-9 < /dev/urandom | head -c 16 | xargs;`
+  if [[ -z $1 ]]; then echo "usage: d-create-mysql <proj-short-name>"; return 1; fi
+    # create mysql container linked to $1-mysql volume and random
+  docker run --name $1-mysql --restart=always -v $1-mysql:/var/lib/mysql -e MYSQL_ROOT_PASSWORD=$mysqlpassword -d mysql 
+}
+
+d-create-mysql-db() {
+  if [[ -z $1 ]]; then echo "usage: d-create-mysql-database <proj-short-name>"; return 1; fi     
+
+  docker run --link $1-mysql:mysql --rm mysql sh -c '
+      exec mysql -h"$MYSQL_PORT_3306_TCP_ADDR" -P"$MYSQL_PORT_3306_TCP_PORT" -uroot -p"$MYSQL_ENV_MYSQL_ROOT_PASSWORD" 
+      -e "CREATE SCHEMA '$1';"
+    '
+}
+
+d-create-mysql-user() {
+  if [[ -z $1 ]]; then echo "usage: d-create-mysql-user <proj-short-name>"; return 1; fi     
+
+  fpmIP=`docker inspect --format '{{ .NetworkSettings.Networks.bridge.IPAddress }}' $1-fpm`
+  docker run --link $1-mysql:mysql --rm mysql sh -c '
+      exec mysql 
+        -h"$MYSQL_PORT_3306_TCP_ADDR" 
+        -P"$MYSQL_PORT_3306_TCP_PORT" 
+        -uroot 
+        -p"$MYSQL_ENV_MYSQL_ROOT_PASSWORD" 
+        -e "
+          CREATE USER '"'"$1"'"'@'"'"$fpmIP"'"' IDENTIFIED BY PASSWORD '"''"';
+          GRANT USAGE ON *.* TO '"'"$1"'"'@'"'"$fpmIP"'"' REQUIRE NONE; 
+          GRANT ALL PRIVILEGES ON "\`"'$1'"\`".* TO '"'"$1"'"'@'"'"$fpmIP"'"' WITH GRANT OPTION; 
+        "
+    '
+}
+  
+d-create-mysql-user-for-pma() {
+  if [[ -z $1 ]]; then echo "usage: d-create-mysql-user <proj-short-name>"; return 1; fi     
+
+  pmaIP=`docker inspect --format '{{ .NetworkSettings.Networks.bridge.IPAddress }}' $1-pma`
+  docker run --link $1-mysql:mysql --rm mysql sh -c '
+      exec mysql 
+        -h"$MYSQL_PORT_3306_TCP_ADDR" 
+        -P"$MYSQL_PORT_3306_TCP_PORT" 
+        -uroot 
+        -p"$MYSQL_ENV_MYSQL_ROOT_PASSWORD" 
+        -e "
+          CREATE USER '"'"$1"'"'@'"'"$pmaIP"'"' IDENTIFIED BY PASSWORD '"''"';
+          GRANT USAGE ON *.* TO '"'"$1"'"'@'"'"$pmaIP"'"' REQUIRE NONE; 
+          GRANT ALL PRIVILEGES ON "\`"'$1'"\`".* TO '"'"$1"'"'@'"'"$pmaIP"'"' WITH GRANT OPTION; 
+        "
+    '
+}
+  
+d-run-mysql-query() {
+  if [[ -z $2 ]]; then echo "usage: d-run-mysql-query <proj-short-name> <mysql query>"; return 1; fi     
+echo "broken"  
+# docker run --link $1-mysql:mysql --rm mysql sh -c 'exec mysql -h"$MYSQL_PORT_3306_TCP_ADDR" -P"$MYSQL_PORT_3306_TCP_PORT" -uroot -p"$MYSQL_ENV_MYSQL_ROOT_PASSWORD" -e "'$2'"'
+}
+
+d-create-nginx() {
+  if [[ -z $2 ]]; then echo "usage: d-create-nginx <proj-short-name> <domain-name>"; return 1; fi
+    # launch nginx
+  docker run --restart=always --name $1-nginx -e VIRTUAL_HOST=$2 -v /home/core/conf/$2/nginx-conf.d/:/etc/nginx/conf.d/:ro -v $1-data:/var/www/html --link $1-fpm:phpfpm -d nginx
+}
+
+d-create-pma() {
+  docker run --name $1-pma --link $1-mysql:db -p 80 -d phpmyadmin/phpmyadmin
+}
+
+d-create-sftp() {
+  docker run --name=$1-sftp -v /home/core/ssh-authorized-keys/:/home/$1/.ssh/keys/ -v $1-data:/home/$1/www-data -p 22 -d atmoz/sftp $1::33:33
+}
+
