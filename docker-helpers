@@ -67,8 +67,9 @@ d-create-mysql-user() {
 }
   
 d-create-mysql-user-for-pma() {
-  if [[ -z $1 ]]; then echo "usage: d-create-mysql-user <proj-short-name>"; return 1; fi     
-
+  if [[ -z $1 ]]; then echo "usage: d-create-mysql-user <proj-short-name>"; return 1; fi
+  proj=$1
+  dbuser='root'
   pmaIP=`docker inspect --format '{{ .NetworkSettings.Networks.bridge.IPAddress }}' $1-pma`
   docker run --link $1-mysql:mysql --rm mysql sh -c '
       exec mysql 
@@ -77,9 +78,9 @@ d-create-mysql-user-for-pma() {
         -uroot 
         -p"$MYSQL_ENV_MYSQL_ROOT_PASSWORD" 
         -e "
-          CREATE USER '"'"$1"'"'@'"'"$pmaIP"'"' IDENTIFIED BY PASSWORD '"''"';
-          GRANT USAGE ON *.* TO '"'"$1"'"'@'"'"$pmaIP"'"' REQUIRE NONE; 
-          GRANT ALL PRIVILEGES ON "\`"'$1'"\`".* TO '"'"$1"'"'@'"'"$pmaIP"'"' WITH GRANT OPTION; 
+          CREATE USER '"'"$dbuser"'"'@'"'"$pmaIP"'"' IDENTIFIED BY PASSWORD '"'"$MYSQL_ENV_MYSQL_ROOT_PASSWORD"'"';
+          GRANT USAGE ON *.* TO '"'"$dbuser"'"'@'"'"$pmaIP"'"' REQUIRE NONE; 
+          GRANT ALL PRIVILEGES ON "\`"'$dbuser'"\`".* TO '"'"$dbuser"'"'@'"'"$pmaIP"'"' WITH GRANT OPTION; 
         "
     '
 }
@@ -107,7 +108,7 @@ d-create-sftp() {
 d-launch() {
   if [[ -z $3 ]]; then echo "usage: d-create-nginx <proj-short-name> <domain-name> <nginx-conf-path>"; return 1; fi
   d-create-mysql $1
-  d-create-mysql-db
+  d-create-mysql-db $1
   d-create-mysql-user $1
   d-create-fpm $1
   d-set-web-folder-permissions $1
