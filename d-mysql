@@ -48,20 +48,29 @@ d-create-mysql-db() {
     '
 }
 
-d-create-mysql-user() {
+d-create-mysql-user-for-fpm() {
   if [[ -z $1 ]]; then echo "usage: d-create-mysql-user <proj-short-name>"; return 1; fi     
 
   fpmIP=`docker inspect --format '{{ .NetworkSettings.Networks.bridge.IPAddress }}' $1-fpm`
   docker run --link $1-mysql:mysql --rm mysql sh -c '
-      exec mysql 
-        -h"$MYSQL_PORT_3306_TCP_ADDR" 
-        -P"$MYSQL_PORT_3306_TCP_PORT" 
-        -uroot 
-        -p"$MYSQL_ENV_MYSQL_ROOT_PASSWORD" 
-        -e "
+      exec mysql -h"$MYSQL_PORT_3306_TCP_ADDR" -P"$MYSQL_PORT_3306_TCP_PORT" -uroot -p"$MYSQL_ENV_MYSQL_ROOT_PASSWORD" 
+	-e "
           CREATE USER '"'"$1"'"'@'"'"$fpmIP"'"' IDENTIFIED BY PASSWORD '"''"';
           GRANT USAGE ON *.* TO '"'"$1"'"'@'"'"$fpmIP"'"' REQUIRE NONE; 
           GRANT ALL PRIVILEGES ON "\`"'$1'"\`".* TO '"'"$1"'"'@'"'"$fpmIP"'"' WITH GRANT OPTION; 
+        "
+    '
+}
+
+d-create-mysql-user() {
+  if [[ -z $1 ]]; then echo "usage: d-create-mysql-user <proj-short-name>"; return 1; fi     
+
+  docker run --link $1-mysql:mysql --rm mysql sh -c '
+      exec mysql -h"$MYSQL_PORT_3306_TCP_ADDR" -P"$MYSQL_PORT_3306_TCP_PORT" -uroot -p"$MYSQL_ENV_MYSQL_ROOT_PASSWORD" 
+	-e "
+          CREATE USER '"'"$1"'"'@'"'%'"' IDENTIFIED BY PASSWORD '"''"';
+          GRANT USAGE ON *.* TO '"'"$1"'"'@'"'%'"' REQUIRE NONE; 
+          GRANT ALL PRIVILEGES ON "\`"'$1'"\`".* TO '"'"$1"'"'@'"'%'"' WITH GRANT OPTION; 
         "
     '
 }
