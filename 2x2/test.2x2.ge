@@ -1,0 +1,21 @@
+# launch database
+docker run --name t2x2-db -v t2x2-mysql:/var/lib/mysql -e MYSQL_ROOT_PASSWORD="lXpiIE2_A_m43qCHCdJyaswIeiBfQD4y" -d mysql
+
+# launch php-fpm and dependencies
+docker run --name t2x2-fpm -v t2x2-data:/var/www/html --link t2x2-db:mysql -d php:5.6-fpm
+docker exec t2x2-fpm apt-get update
+docker exec t2x2-fpm apt-get -y install php5-mcrypt php5-gd php-token-stream php5-mysql libpng-dev libmcrypt-dev
+docker exec t2x2-fpm docker-php-ext-install -j5 gd tokenizer pdo_mysql mbstring zip pdo mcrypt
+
+# launch nginx
+docker run --name t2x2-nginx -e VIRTUAL_HOST=test.2x2.ge -v /home/core/conf/test.2x2.ge.conf:/etc/nginx/conf.d/test.2x2.ge.conf -v t2x2-data:/var/www/html --link t2x2-fpm:phpfpm -d nginx
+
+# setting up proper permissions for web folder
+docker exec t2x2-nginx chmod 755 -R /var/www/html/
+docker exec t2x2-nginx chmod 775 -R /var/www/html/storage/
+
+# phpMyadmin
+docker run --name t2x2-pma --link t2x2-db:db -p 36955:80 -d phpmyadmin/phpmyadmin
+
+# launch sftp
+docker run --name=t2x2-sftp -v t2x2-data:/home/dato/test.2x2.ge -p 36956:22 -d atmoz/sftp dato:rEIRY1BIDkUiIJy:104:33
