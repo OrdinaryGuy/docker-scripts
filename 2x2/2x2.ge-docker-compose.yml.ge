@@ -1,0 +1,32 @@
+version: '2'
+services:
+  2x2-db:
+    hostname: 2x2-db
+    restart: always
+    volumes:
+      - /home/core/conf/2x2-db.conf.d:/etc/mysql/conf.d:ro
+      - 2x2-mysql:/var/lib/mysql 
+    environment:
+      MYSQL_ROOT_PASSWORD: m8hrufVpTn7RzvjY
+    image: mysql
+  2x2-fpm:
+    build: 2x2/fpm
+    hostname: 2x2-fpm
+    volumes:
+      - 2x2-data:/var/www/html
+    links:
+      2x2-db:mysql
+  2x2-nginx:
+    hostname: 2x2-nginx
+    environment:
+      VIRTUAL_HOST: 2x2.ge,www.2x2.ge
+    volumes:
+      - /home/core/conf/2x2.ge.conf:/etc/nginx/conf.d/2x2.ge.conf:ro
+      - 2x2-data:/var/www/html
+    links:
+      - 2x2-fpm:phpfpm
+    image: nginx
+      
+docker exec 2x2-nginx apt-get update 
+docker exec 2x2-nginx apt-get -y install php5-mcrypt php5-gd php-token-stream php5-mysql libpng-dev libmcrypt-dev
+docker exec 2x2-nginx docker-php-ext-install -j5 gd tokenizer pdo_mysql mbstring zip pdo mcrypt
